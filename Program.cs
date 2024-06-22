@@ -82,7 +82,7 @@ var vehicleBackupTask = Task.Run(async () =>
     }
 }, token);
 
-await Task.WhenAll(userInputTask, vehicleBackupTask);
+await Task.WhenAny(userInputTask, vehicleBackupTask);
 Console.WriteLine(" Program ended");
 
 async Task BackupVehicleData(API api, CancellationToken token)
@@ -120,13 +120,14 @@ async Task BackupVehicleData(API api, CancellationToken token)
         }
     }
 
+    var directory = Path.Combine(Environment.CurrentDirectory, "VehiclesBackup");
+    if (!Directory.Exists(directory))
+    {
+        Directory.CreateDirectory(directory);
+    }
+
     await Parallel.ForEachAsync(vehicleBackupList, async (v, token) =>
     {
-        var directory = Path.Combine(Environment.CurrentDirectory, "VehiclesBackup");
-        if (!Directory.Exists(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
         var path = Path.Combine(directory, $"{v.Id}.csv");
         using (var writer = new StreamWriter(path, true))
         {
