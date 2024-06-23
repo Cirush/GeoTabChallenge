@@ -1,5 +1,4 @@
-﻿using System.Text;
-using Geotab.Checkmate;
+﻿using Geotab.Checkmate;
 using Geotab.Checkmate.ObjectModel;
 using Geotab.Checkmate.ObjectModel.Engine;
 using Geotab.Checkmate.Web;
@@ -45,7 +44,7 @@ var userInputTask = Task.Run(() =>
     tokenSource.Cancel();
 });
 
-var vehicleBackupTask = Task.Run(async () =>
+var vehicleBackupTask = Task.Run(async () => 
 {
     while (!token.IsCancellationRequested)
     {
@@ -88,37 +87,31 @@ Console.WriteLine(" Program ended");
 async Task BackupVehicleData(API api, CancellationToken token)
 {
     var devices = await api.CallAsync<IList<Device>>("Get", typeof(Device));
-
     var calls = devices?.SelectMany(device => new[] { GetCoordinates(device), GetOdometer(device) }).ToArray();
-
-    if (calls == null) return;
+    if (devices == null || calls == null) return;
 
     var multiCallResults = await api.MultiCallAsync(calls);
 
-    var deviceStatusInfoList = multiCallResults.OfType<IList<DeviceStatusInfo>>();
-    var statusDataList = multiCallResults.OfType<IList<StatusData>>();
+    var deviceStatusInfoList = multiCallResults.OfType<IList<DeviceStatusInfo>>().Select(d => d.FirstOrDefault());
+    var statusDataList = multiCallResults.OfType<IList<StatusData>>().Select(s => s.FirstOrDefault());
 
-    var vehicleBackupList = new List<VehicleBackup>();
-
-    for (int i = 0; i < devices?.Count; i++)
+    var vehicleBackupList = devices.Select(device => 
     {
-        var device = devices[i];
         var goDevice = device as GoDevice;
-        var statusInfo = deviceStatusInfoList.ElementAtOrDefault(i)?.FirstOrDefault();
-        var statusData = statusDataList.ElementAtOrDefault(i)?.FirstOrDefault();
+        var statusInfo = deviceStatusInfoList.FirstOrDefault(d => d?.Device?.Id == device.Id);
+        var statusData = statusDataList.FirstOrDefault(s => s?.Device?.Id == device.Id);
 
-        if (device != null && statusInfo != null && statusData != null)
+        return new VehicleBackup
         {
-            vehicleBackupList.Add(new VehicleBackup
-            {
-                Id = device.Id,
-                Vin = goDevice?.VehicleIdentificationNumber,
-                Latitude = statusInfo.Latitude,
-                Longitude = statusInfo.Longitude,
-                Odometer = statusData.Data
-            });
-        }
-    }
+            Id = device.Id,
+            Name = device.Name,
+            Vin = goDevice?.VehicleIdentificationNumber,
+            Latitude = statusInfo?.Latitude ?? 0,
+            Longitude = statusInfo?.Longitude ?? 0,
+            Odometer = Math.Floor(statusData?.Data ?? 0),
+            Timestamp = statusInfo?.DateTime
+        };
+    }).ToList();
 
     var directory = Path.Combine(Environment.CurrentDirectory, "VehiclesBackup");
     if (!Directory.Exists(directory))
@@ -126,12 +119,12 @@ async Task BackupVehicleData(API api, CancellationToken token)
         Directory.CreateDirectory(directory);
     }
 
-    await Parallel.ForEachAsync(vehicleBackupList, async (v, token) =>
+    await Parallel.ForEachAsync(vehicleBackupList, async (v, _) =>
     {
         var path = Path.Combine(directory, $"{v.Id}.csv");
         using (var writer = new StreamWriter(path, true))
         {
-            await writer.WriteLineAsync(new StringBuilder().Append(v.ToCsv()), token);
+            await writer.WriteLineAsync(v.ToCsv());
         }
     });
 }
@@ -164,8 +157,8 @@ async Task<API> ApiAuthentication(string server, string database, string usernam
 
 static object[] GetCoordinates(Device device)
 {
-    return new object[]
-    {
+    return
+    [
         "Get", typeof(DeviceStatusInfo), new
         {
             search = new DeviceStatusInfoSearch
@@ -186,13 +179,13 @@ static object[] GetCoordinates(Device device)
             }
         },
         typeof(IList<DeviceStatusInfo>)
-    };
+    ];
 }
 
 static object[] GetOdometer(Device device)
 {
-    return new object[]
-    {
+    return 
+    [
         "Get", typeof(StatusData), new
         {
             search = new StatusDataSearch
@@ -211,5 +204,5 @@ static object[] GetOdometer(Device device)
             }
         },
         typeof(IList<StatusData>)
-    };
+    ];
 }
