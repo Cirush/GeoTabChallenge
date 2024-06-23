@@ -109,7 +109,6 @@ async Task BackupVehicleData(API api, CancellationToken token)
             Latitude = statusInfo?.Latitude ?? 0,
             Longitude = statusInfo?.Longitude ?? 0,
             Odometer = Math.Floor(statusData?.Data ?? 0),
-            Timestamp = statusInfo?.DateTime
         };
     }).ToList();
 

@@ -8,6 +8,6 @@ public class VehicleBackup
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public double? Odometer { get; set; }
-    public DateTime? Timestamp { get; set; }
+    public DateTime Timestamp { get; set; } = DateTime.Now;
     public string ToCsv() => $"{Id},{Name},{Vin},{Latitude},{Longitude},{Odometer}, {Timestamp}";
 }
