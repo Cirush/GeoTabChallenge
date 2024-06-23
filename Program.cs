@@ -51,7 +51,7 @@ var vehicleBackupTask = Task.Run(async () =>
         try
         {
             await BackupVehicleData(api, token);
-            await Task.Delay(10000, token);
+            await Task.Delay(60000, token);
         }
         catch (InvalidApiOperationException ex)
         {
