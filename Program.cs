@@ -1,4 +1,5 @@
-﻿using Geotab.Checkmate;
+﻿using System.Text;
+using Geotab.Checkmate;
 using Geotab.Checkmate.ObjectModel;
 using Geotab.Checkmate.ObjectModel.Engine;
 using Geotab.Checkmate.Web;
@@ -106,9 +107,9 @@ async Task BackupVehicleData(API api, CancellationToken token)
             Id = device.Id,
             Name = device.Name,
             Vin = goDevice?.VehicleIdentificationNumber,
-            Latitude = statusInfo?.Latitude ?? 0,
-            Longitude = statusInfo?.Longitude ?? 0,
-            Odometer = Math.Floor(statusData?.Data ?? 0),
+            Latitude = statusInfo?.Latitude,
+            Longitude = statusInfo?.Longitude,
+            Odometer = statusData?.Data
         };
     }).ToList();
 
@@ -118,12 +119,12 @@ async Task BackupVehicleData(API api, CancellationToken token)
         Directory.CreateDirectory(directory);
     }
 
-    await Parallel.ForEachAsync(vehicleBackupList, async (v, _) =>
+    await Parallel.ForEachAsync(vehicleBackupList, async (v, token) =>
     {
         var path = Path.Combine(directory, $"{v.Id}.csv");
         using (var writer = new StreamWriter(path, true))
         {
-            await writer.WriteLineAsync(v.ToCsv());
+            await writer.WriteLineAsync(new StringBuilder().Append(v.ToCsv()), token);
         }
     });
 }
